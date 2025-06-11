@@ -37,7 +37,7 @@ const WeatherCard = ({ city, onWeatherChange }) => {
         {weather.name}, {weather.sys.country}
       </h2>
       <img
-        src={`http://openweathermap.org/img/wn/${weather.weather[0].icon}@2x.png`}
+        src={`https://openweathermap.org/img/wn/${weather.weather[0].icon}@2x.png`}
         alt="weather icon"
         className="mx-auto mb-4"
       />
