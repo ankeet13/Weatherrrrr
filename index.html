@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Weatherrrrr Pro</title>
+  <meta name="description" content="Professional Apple-style weather web app (free OpenWeather endpoints)." />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: { extend: {
+        fontFamily: { sans: ["Inter","ui-sans-serif","system-ui","Segoe UI","Roboto","Helvetica","Arial"] },
+        boxShadow: { soft: "0 10px 30px rgba(2,6,23,0.06)" }
+      }}
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .thin-scroll::-webkit-scrollbar{height:8px;width:8px}
+    .thin-scroll::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:999px}
+    body.clear-day{background-image:linear-gradient(180deg,#89CFF0 0%,#e6f2ff 100%)}
+    body.clear-night{background-image:linear-gradient(180deg,#0b1220 0%,#1f2940 100%)}
+    body.clouds{background-image:linear-gradient(180deg,#cfd9df 0%,#e2ebf0 100%)}
+    body.rain{background-image:linear-gradient(180deg,#99a9c7 0%,#d3d9e7 100%)}
+    body.thunder{background-image:linear-gradient(180deg,#3d4b65 0%,#98a7c3 100%)}
+    body.snow{background-image:linear-gradient(180deg,#E0EAFC 0%,#CFDEF3 100%)}
+    body.mist{background-image:linear-gradient(180deg,#c9d6ff 0%,#e2e2e2 100%)}
+    .card{border-radius:1rem;background:rgba(255,255,255,.7);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.5);box-shadow:0 10px 30px rgba(2,6,23,.06)}
+  </style>
+</head>
+<body class="min-h-dvh font-sans text-slate-800 selection:bg-sky-200/60 selection:text-slate-900 clear-day">
+  <header class="sticky top-0 z-50 backdrop-blur bg-white/60 border-b border-white/40">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center gap-2">
+      <button id="homeBtn" class="shrink-0 inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white/70 border border-white/60 hover:bg-white transition" title="Back to current location">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-slate-700"><path d="M3 11l9-8 9 8"/><path d="M9 22V12h6v10"/></svg>
+        <span class="hidden sm:inline text-sm font-medium">Home</span>
+      </button>
+
+      <form id="searchForm" class="relative flex-1">
+        <input id="searchInput" type="text" inputmode="search" autocomplete="off" placeholder="Search city... (e.g., Dee Why, Sydney)" class="w-full h-11 pl-11 pr-10 rounded-xl bg-white/80 border border-white/60 focus:border-sky-400 outline-none shadow-soft placeholder:text-slate-400" />
+        <div class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        </div>
+        <button class="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 rounded-lg hover:bg-white/80" type="submit">
+          <span class="text-sm font-medium text-slate-700">Go</span>
+        </button>
+        <div id="suggestions" class="hidden absolute z-50 mt-2 w-full card p-1 max-h-72 overflow-auto thin-scroll"></div>
+      </form>
+
+      <button id="unitToggle" class="shrink-0 px-3 py-2 rounded-xl bg-white/70 border border-white/60 hover:bg-white transition" title="Toggle °C/°F">
+        <span class="font-semibold">°C</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 py-6 space-y-8">
+    <section id="section-current" class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div class="card p-6 lg:col-span-2">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h1 id="locName" class="text-2xl sm:text-3xl font-semibold">—</h1>
+            <p id="locMeta" class="text-sm text-slate-600">—</p>
+          </div>
+          <div id="updatedAt" class="text-xs text-slate-500">Updated —</div>
+        </div>
+        <div class="mt-6 grid grid-cols-1 sm:grid-cols-3 items-center gap-4">
+          <div class="flex items-center gap-3">
+            <img id="currIcon" alt="" class="size-16" />
+            <div>
+              <div id="currTemp" class="text-5xl font-semibold">—</div>
+              <div id="currDesc" class="text-slate-600">—</div>
+            </div>
+          </div>
+          <div class="sm:col-span-2 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+            <div class="card p-3 text-center">
+              <div class="text-xs text-slate-500">High / Low</div>
+              <div id="hl" class="text-lg font-semibold">—</div>
+            </div>
+            <div class="card p-3 text-center">
+              <div class="text-xs text-slate-500">Feels like</div>
+              <div id="feels" class="text-lg font-semibold">—</div>
+            </div>
+            <div class="card p-3 text-center">
+              <div class="text-xs text-slate-500">Wind</div>
+              <div id="wind" class="text-lg font-semibold">—</div>
+            </div>
+            <div class="card p-3 text-center">
+              <div class="text-xs text-slate-500">Humidity</div>
+              <div id="humidity" class="text-lg font-semibold">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card p-6 grid grid-cols-2 gap-4 content-start">
+        <div><div class="text-xs text-slate-500">Sunrise</div><div id="sunrise" class="font-semibold">—</div></div>
+        <div><div class="text-xs text-slate-500">Sunset</div><div id="sunset" class="font-semibold">—</div></div>
+        <div><div class="text-xs text-slate-500">Pressure</div><div id="pressure" class="font-semibold">—</div></div>
+        <div><div class="text-xs text-slate-500">Visibility</div><div id="visibility" class="font-semibold">—</div></div>
+        <div><div class="text-xs text-slate-500">Clouds</div><div id="clouds" class="font-semibold">—</div></div>
+        <div><div class="text-xs text-slate-500">UV Index</div><div id="uv" class="font-semibold">—</div></div>
+        <div class="col-span-2"><div class="text-xs text-slate-500">Air Quality</div><div id="aqi" class="font-semibold">—</div></div>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="text-lg font-semibold mb-3">Next 24 hours</h2>
+      <div id="hourly" class="card p-4 overflow-x-auto thin-scroll"><div id="hourlyTrack" class="flex gap-4 min-w-max"></div></div>
+    </section>
+
+    <section>
+      <h2 class="text-lg font-semibold mb-3">5-day forecast</h2>
+      <div id="daily" class="card divide-y divide-white/60"></div>
+    </section>
+  </main>
+
+  <div id="toast" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 card px-4 py-2 text-sm"></div>
+
+  <script>
+    // ====== CONFIG ======
+    const OPENWEATHER_API_KEY = "174b961d78da4f70c6471fa879b99f2c"; // your key
+    const DEFAULT_FALLBACK = { name: "Sydney", admin1: "NSW", country: "AU", lat: -33.8688, lon: 151.2093 };
+
+    // ====== STATE ======
+    const state = { units: "metric", place: null, homeCoords: null }; // metric | imperial
+
+    // ====== UTILS ======
+    const $ = (s) => document.querySelector(s);
+    const iconUrl = (code) => `https://openweathermap.org/img/wn/${code}@2x.png`;
+    const fmt = (n, d=0) => Number(n).toFixed(d);
+    const toLocal = (unix, off) => new Date((unix + off) * 1000);
+    const timeStr = (unix, off, opts={hour:"numeric", minute:"2-digit"}) => toLocal(unix, off).toLocaleTimeString(undefined, opts);
+    const dayStr  = (unix, off, opts={weekday:"short"}) => toLocal(unix, off).toLocaleDateString(undefined, opts);
+    const dateStr = (unix, off, opts={weekday:"long", month:"short", day:"numeric"}) => toLocal(unix, off).toLocaleDateString(undefined, opts);
+    const aqiText = (a) => ({1:"Good",2:"Fair",3:"Moderate",4:"Poor",5:"Very Poor"}[a] || "—");
+    const unitLabel = () => state.units === "metric" ? "°C" : "°F";
+    const windLabel = (speed) => state.units === "metric" ? `${fmt(speed*3.6,0)} km/h` : `${fmt(speed,0)} mph`;
+    const visLabel  = (m) => state.units === "metric" ? `${fmt(m/1000,1)} km` : `${fmt(m*0.000621371,1)} mi`;
+
+    function setBodyGradient(main, isDay){
+      const b = document.body;
+      b.className = b.className.replace(/\b(clear-day|clear-night|clouds|rain|thunder|snow|mist)\b/g,'').trim();
+      const map = { Clear: isDay ? "clear-day":"clear-night", Clouds:"clouds", Drizzle:"rain", Rain:"rain", Thunderstorm:"thunder", Snow:"snow",
+        Mist:"mist", Smoke:"mist", Haze:"mist", Dust:"mist", Fog:"mist", Sand:"mist", Ash:"mist", Squall:"mist", Tornado:"mist" };
+      b.classList.add(map[main] || (isDay ? "clear-day":"clear-night"));
+    }
+    function toast(msg, ms=2600){ const t=$("#toast"); t.textContent=msg; t.classList.remove("hidden"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.add("hidden"),ms); }
+    function setLoading(on){ ["#section-current","#hourly","#daily"].forEach(sel=>{ const el=$(sel); el.style.opacity = on?0.6:1; }); }
+
+    // ====== API (FREE) ======
+    async function geocodeQuery(q){
+      const r = await fetch(`https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(q)}&limit=5&appid=${OPENWEATHER_API_KEY}`);
+      if(!r.ok) throw new Error("geocode"); return r.json();
+    }
+    async function reverseGeocode(lat,lon){
+      const r = await fetch(`https://api.openweathermap.org/geo/1.0/reverse?lat=${lat}&lon=${lon}&limit=1&appid=${OPENWEATHER_API_KEY}`);
+      if(!r.ok) return null; const j=await r.json(); return j?.[0]||null;
+    }
+    async function fetchCurrent(lat,lon){
+      const r = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=${state.units}&appid=${OPENWEATHER_API_KEY}`);
+      if(!r.ok) throw new Error("current"); return r.json();
+    }
+    async function fetchForecast(lat,lon){
+      const r = await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=${state.units}&appid=${OPENWEATHER_API_KEY}`);
+      if(!r.ok) throw new Error("forecast"); return r.json();
+    }
+    async function fetchAQI(lat,lon){
+      try{
+        const r = await fetch(`https://api.openweathermap.org/data/2.5/air_pollution?lat=${lat}&lon=${lon}&appid=${OPENWEATHER_API_KEY}`);
+        if(!r.ok) return null; const j=await r.json(); return j?.list?.[0]?.main?.aqi || null;
+      }catch{ return null; }
+    }
+
+    // Build 5 daily rows from 3-hour forecast
+    function buildDailyFromForecast(list, tzOff){
+      const days = new Map();
+      list.forEach(it=>{
+        const key = toLocal(it.dt, tzOff).toISOString().slice(0,10);
+        const d = days.get(key) || { min:+Infinity, max:-Infinity, items:[] };
+        d.min = Math.min(d.min, it.main.temp_min);
+        d.max = Math.max(d.max, it.main.temp_max);
+        d.items.push(it);
+        days.set(key, d);
+      });
+      const arr = [];
+      [...days.entries()].forEach(([k,d])=>{
+        const pick = d.items.reduce((best, it)=>{
+          const hr = toLocal(it.dt, tzOff).getHours();
+          const s = Math.abs(12-hr);
+          return !best || s<best.s ? {it,s} : best;
+        }, null).it;
+        arr.push({ dt: pick.dt, temp:{min:d.min,max:d.max}, weather: pick.weather?.[0] });
+      });
+      return arr.slice(0,5);
+    }
+
+    // ====== RENDER ======
+    function renderAll(place, cur, fc, aqi){
+      const tz = cur.timezone;
+      const isDay = cur.dt > cur.sys.sunrise && cur.dt < cur.sys.sunset;
+      const w = cur.weather?.[0] || {};
+      setBodyGradient(w.main, isDay);
+
+      $("#locName").textContent = `${place.name}${place.admin1 ? ", "+place.admin1 : ""}`;
+      $("#locMeta").textContent = `${place.country || ""} • ${dateStr(cur.dt, tz)}`;
+      $("#updatedAt").textContent = `Updated ${timeStr(Math.floor(Date.now()/1000)-tz, tz)}`;
+
+      $("#currIcon").src = iconUrl(w.icon || "01d");
+      $("#currIcon").alt = w.description || "";
+      $("#currTemp").textContent = `${fmt(cur.main.temp,0)}${unitLabel()}`;
+      $("#currDesc").textContent = (w.description || "—").replace(/\b\w/g,m=>m.toUpperCase());
+
+      const daily = buildDailyFromForecast(fc.list, tz);
+      const today = daily[0];
+      if(today) $("#hl").textContent = `${fmt(today.temp.max,0)} / ${fmt(today.temp.min,0)}${unitLabel()}`;
+      $("#feels").textContent = `${fmt(cur.main.feels_like,0)}${unitLabel()}`;
+      $("#wind").textContent = windLabel(cur.wind.speed);
+      $("#humidity").textContent = `${cur.main.humidity}%`;
+
+      $("#sunrise").textContent = timeStr(cur.sys.sunrise, tz);
+      $("#sunset").textContent  = timeStr(cur.sys.sunset, tz);
+      $("#pressure").textContent = `${cur.main.pressure} hPa`;
+      $("#visibility").textContent = visLabel(cur.visibility ?? 0);
+      $("#clouds").textContent = `${cur.clouds?.all ?? 0}%`;
+      $("#uv").textContent = "—"; // UV not on free endpoints
+      $("#aqi").textContent = aqi ? `${aqi} • ${aqiText(aqi)}` : "—";
+
+      // Hourly ≈ next 24h (8 x 3-hour slots)
+      const hWrap = $("#hourlyTrack"); hWrap.innerHTML = "";
+      fc.list.slice(0,8).forEach(h=>{
+        const el = document.createElement("div");
+        el.className = "w-24 shrink-0 text-center";
+        el.innerHTML = `
+          <div class="text-xs text-slate-600">${timeStr(h.dt, tz, {hour:"numeric"})}</div>
+          <img class="mx-auto size-10" src="${iconUrl(h.weather?.[0]?.icon || "01d")}" alt="">
+          <div class="font-semibold">${fmt(h.main.temp,0)}${unitLabel()}</div>
+          <div class="text-xs text-sky-700/80">${Math.round((h.pop||0)*100)}% rain</div>`;
+        hWrap.appendChild(el);
+      });
+
+      // Daily (5 days)
+      const dWrap = $("#daily"); dWrap.innerHTML = "";
+      daily.forEach((d,i)=>{
+        const row = document.createElement("div");
+        row.className = "flex items-center justify-between gap-4 p-3";
+        row.innerHTML = `
+          <div class="w-24 text-slate-700">${i===0 ? "Today" : dayStr(d.dt, tz, {weekday:"long"})}</div>
+          <div class="flex items-center gap-3">
+            <img class="size-8" src="${iconUrl(d.weather?.icon || "01d")}" alt="">
+            <div class="hidden sm:block text-sm text-slate-600">${(d.weather?.description||"").replace(/\b\w/g,m=>m.toUpperCase())}</div>
+          </div>
+          <div class="flex-1 h-2 mx-2 bg-slate-200 rounded-full relative overflow-hidden">
+            <div class="absolute left-0 top-0 bottom-0 bg-sky-400" style="width:100%"></div>
+          </div>
+          <div class="w-28 text-right font-semibold">${fmt(d.temp.max,0)} / ${fmt(d.temp.min,0)}${unitLabel()}</div>`;
+        dWrap.appendChild(row);
+      });
+    }
+
+    // ====== SEARCH / UI ======
+    let suggestTimer=null;
+    $("#searchInput").addEventListener("input",(e)=>{
+      const q=e.target.value.trim(), box=$("#suggestions");
+      clearTimeout(suggestTimer);
+      if(!q){ box.classList.add("hidden"); box.innerHTML=""; return; }
+      suggestTimer=setTimeout(async()=>{
+        try{
+          const res=await geocodeQuery(q);
+          if(!res.length){ box.classList.add("hidden"); box.innerHTML=""; return; }
+          box.innerHTML=res.map((r,i)=>`
+            <button data-i="${i}" class="w-full text-left px-3 py-2 rounded-lg hover:bg-white/80">
+              <div class="font-medium">${r.name}${r.state?`, ${r.state}`:''}</div>
+              <div class="text-xs text-slate-500">${r.country||''} • ${r.lat.toFixed(2)}, ${r.lon.toFixed(2)}</div>
+            </button>`).join("");
+          box.classList.remove("hidden");
+          box.querySelectorAll("button").forEach(btn=>btn.addEventListener("click", async(ev)=>{
+            const r=res[Number(ev.currentTarget.dataset.i)];
+            box.classList.add("hidden");
+            $("#searchInput").value = `${r.name}${r.state?`, ${r.state}`:''}`;
+            await loadPlace({ name:r.name, admin1:r.state||'', country:r.country||'', lat:r.lat, lon:r.lon });
+          }));
+        }catch{}
+      },250);
+    });
+
+    $("#searchForm").addEventListener("submit", async(e)=>{
+      e.preventDefault();
+      const q=$("#searchInput").value.trim(); if(!q) return;
+      try{
+        const res=await geocodeQuery(q); const r=res?.[0];
+        if(!r) return toast("No results");
+        await loadPlace({ name:r.name, admin1:r.state||'', country:r.country||'', lat:r.lat, lon:r.lon });
+      }catch{ toast("Search failed"); }
+    });
+
+    $("#homeBtn").addEventListener("click", async()=>{
+      if(state.homeCoords){
+        const rg = await reverseGeocode(state.homeCoords.lat, state.homeCoords.lon) || {};
+        await loadPlace({ name:rg.name||"Current Location", admin1:rg.state||'', country:rg.country||'', lat:state.homeCoords.lat, lon:state.homeCoords.lon });
+      }else{
+        toast("Requesting location…"); await initByGeolocation(true);
+      }
+    });
+
+    $("#unitToggle").addEventListener("click", async()=>{
+      state.units = state.units==="metric" ? "imperial" : "metric";
+      $("#unitToggle").innerHTML = `<span class="font-semibold">${state.units==="metric"?"°C":"°F"}</span>`;
+      if(state.place) await loadPlace(state.place); // refetch with new units
+    });
+
+    // ====== LOAD & BOOT ======
+    async function loadPlace(place){
+      setLoading(true);
+      try{
+        const [cur,fc,aqi] = await Promise.all([
+          fetchCurrent(place.lat, place.lon),
+          fetchForecast(place.lat, place.lon),
+          fetchAQI(place.lat, place.lon)
+        ]);
+        state.place = place;
+        renderAll(place, cur, fc, aqi);
+      }catch(err){ console.error(err); toast("Unable to load weather for this place."); }
+      finally{ setLoading(false); }
+    }
+
+    async function initByGeolocation(force=false){
+      return new Promise((resolve)=>{
+        if(!navigator.geolocation){ toast("Geolocation unavailable — using Sydney"); return loadPlace(DEFAULT_FALLBACK).then(resolve); }
+        navigator.geolocation.getCurrentPosition(async(pos)=>{
+          const {latitude:lat, longitude:lon} = pos.coords; state.homeCoords={lat,lon};
+          const rg = await reverseGeocode(lat,lon) || {};
+          await loadPlace({ name:rg.name||"Current Location", admin1:rg.state||'', country:rg.country||'', lat, lon });
+          resolve();
+        }, async()=>{
+          if(force) toast("Could not access location — using Sydney");
+          await loadPlace(DEFAULT_FALLBACK); resolve();
+        }, { enableHighAccuracy:true, timeout:10000, maximumAge:600000 });
+      });
+    }
+
+    (async function boot(){ await initByGeolocation(); })();
+  </script>
+
+  <footer class="px-4 pb-8 text-center text-xs text-slate-600/80">
+    Data by OpenWeather (free endpoints). Consider restricting your API key by domain in your OpenWeather account.
+  </footer>
+</body>
+</html>
