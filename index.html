@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Weatherrrrr Pro</title>
-  <meta name="description" content="Professional Apple-style weather web app (free OpenWeather endpoints)." />
+  <meta name="description" content="Professional Apple‑style weather web app (free OpenWeather endpoints) with correct target‑timezone handling." />
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -44,15 +44,11 @@
         <div class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
         </div>
-        <button class="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 rounded-lg hover:bg-white/80" type="submit">
-          <span class="text-sm font-medium text-slate-700">Go</span>
-        </button>
+        <button class="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 rounded-lg hover:bg-white/80" type="submit"><span class="text-sm font-medium text-slate-700">Go</span></button>
         <div id="suggestions" class="hidden absolute z-50 mt-2 w-full card p-1 max-h-72 overflow-auto thin-scroll"></div>
       </form>
 
-      <button id="unitToggle" class="shrink-0 px-3 py-2 rounded-xl bg-white/70 border border-white/60 hover:bg-white transition" title="Toggle °C/°F">
-        <span class="font-semibold">°C</span>
-      </button>
+      <button id="unitToggle" class="shrink-0 px-3 py-2 rounded-xl bg-white/70 border border-white/60 hover:bg-white transition" title="Toggle °C/°F"><span class="font-semibold">°C</span></button>
     </div>
   </header>
 
@@ -75,22 +71,10 @@
             </div>
           </div>
           <div class="sm:col-span-2 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-            <div class="card p-3 text-center">
-              <div class="text-xs text-slate-500">High / Low</div>
-              <div id="hl" class="text-lg font-semibold">—</div>
-            </div>
-            <div class="card p-3 text-center">
-              <div class="text-xs text-slate-500">Feels like</div>
-              <div id="feels" class="text-lg font-semibold">—</div>
-            </div>
-            <div class="card p-3 text-center">
-              <div class="text-xs text-slate-500">Wind</div>
-              <div id="wind" class="text-lg font-semibold">—</div>
-            </div>
-            <div class="card p-3 text-center">
-              <div class="text-xs text-slate-500">Humidity</div>
-              <div id="humidity" class="text-lg font-semibold">—</div>
-            </div>
+            <div class="card p-3 text-center"><div class="text-xs text-slate-500">High / Low</div><div id="hl" class="text-lg font-semibold">—</div></div>
+            <div class="card p-3 text-center"><div class="text-xs text-slate-500">Feels like</div><div id="feels" class="text-lg font-semibold">—</div></div>
+            <div class="card p-3 text-center"><div class="text-xs text-slate-500">Wind</div><div id="wind" class="text-lg font-semibold">—</div></div>
+            <div class="card p-3 text-center"><div class="text-xs text-slate-500">Humidity</div><div id="humidity" class="text-lg font-semibold">—</div></div>
           </div>
         </div>
       </div>
@@ -112,7 +96,7 @@
     </section>
 
     <section>
-      <h2 class="text-lg font-semibold mb-3">5-day forecast</h2>
+      <h2 class="text-lg font-semibold mb-3">5‑day forecast</h2>
       <div id="daily" class="card divide-y divide-white/60"></div>
     </section>
   </main>
@@ -131,14 +115,21 @@
     const $ = (s) => document.querySelector(s);
     const iconUrl = (code) => `https://openweathermap.org/img/wn/${code}@2x.png`;
     const fmt = (n, d=0) => Number(n).toFixed(d);
-    const toLocal = (unix, off) => new Date((unix + off) * 1000);
-    const timeStr = (unix, off, opts={hour:"numeric", minute:"2-digit"}) => toLocal(unix, off).toLocaleTimeString(undefined, opts);
-    const dayStr  = (unix, off, opts={weekday:"short"}) => toLocal(unix, off).toLocaleDateString(undefined, opts);
-    const dateStr = (unix, off, opts={weekday:"long", month:"short", day:"numeric"}) => toLocal(unix, off).toLocaleDateString(undefined, opts);
-    const aqiText = (a) => ({1:"Good",2:"Fair",3:"Moderate",4:"Poor",5:"Very Poor"}[a] || "—");
+
+    // Browser offset in seconds (negative getTimezoneOffset -> seconds)
+    const BROWSER_TZ_OFFSET_SEC = -new Date().getTimezoneOffset() * 60;
+
+    // Convert UTC unix (sec) to a Date in the TARGET city's local time without double-shifting
+    const toLocal = (unixSec, targetOffsetSec) => new Date((unixSec + (targetOffsetSec - BROWSER_TZ_OFFSET_SEC)) * 1000);
+
+    const timeStr = (unix, off, opts={ hour:"numeric", minute:"2-digit" }) => toLocal(unix, off).toLocaleTimeString(undefined, opts);
+    const dayStr  = (unix, off, opts={ weekday:"short" }) => toLocal(unix, off).toLocaleDateString(undefined, opts);
+    const dateStr = (unix, off, opts={ weekday:"long", month:"short", day:"numeric" }) => toLocal(unix, off).toLocaleDateString(undefined, opts);
+
     const unitLabel = () => state.units === "metric" ? "°C" : "°F";
     const windLabel = (speed) => state.units === "metric" ? `${fmt(speed*3.6,0)} km/h` : `${fmt(speed,0)} mph`;
     const visLabel  = (m) => state.units === "metric" ? `${fmt(m/1000,1)} km` : `${fmt(m*0.000621371,1)} mi`;
+    const aqiText = (a) => ({1:"Good",2:"Fair",3:"Moderate",4:"Poor",5:"Very Poor"}[a] || "—");
 
     function setBodyGradient(main, isDay){
       const b = document.body;
@@ -147,7 +138,8 @@
         Mist:"mist", Smoke:"mist", Haze:"mist", Dust:"mist", Fog:"mist", Sand:"mist", Ash:"mist", Squall:"mist", Tornado:"mist" };
       b.classList.add(map[main] || (isDay ? "clear-day":"clear-night"));
     }
-    function toast(msg, ms=2600){ const t=$("#toast"); t.textContent=msg; t.classList.remove("hidden"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.add("hidden"),ms); }
+
+    function toast(msg, ms=2600){ const t=document.getElementById("toast"); t.textContent=msg; t.classList.remove("hidden"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.add("hidden"),ms); }
     function setLoading(on){ ["#section-current","#hourly","#daily"].forEach(sel=>{ const el=$(sel); el.style.opacity = on?0.6:1; }); }
 
     // ====== API (FREE) ======
@@ -199,37 +191,36 @@
 
     // ====== RENDER ======
     function renderAll(place, cur, fc, aqi){
-      const tz = cur.timezone;
+      const tz = (fc?.city?.timezone ?? cur.timezone ?? 0);
       const isDay = cur.dt > cur.sys.sunrise && cur.dt < cur.sys.sunset;
       const w = cur.weather?.[0] || {};
       setBodyGradient(w.main, isDay);
 
-      $("#locName").textContent = `${place.name}${place.admin1 ? ", "+place.admin1 : ""}`;
-      $("#locMeta").textContent = `${place.country || ""} • ${dateStr(cur.dt, tz)}`;
-      $("#updatedAt").textContent = `Updated ${timeStr(Math.floor(Date.now()/1000)-tz, tz)}`;
+      document.getElementById('locName').textContent = `${place.name}${place.admin1 ? ", "+place.admin1 : ""}`;
+      document.getElementById('locMeta').textContent = `${place.country || ""} • ${dateStr(cur.dt, tz)}`;
+      document.getElementById('updatedAt').textContent = `Updated ${timeStr(Math.floor(Date.now()/1000), tz)}`;
 
-      $("#currIcon").src = iconUrl(w.icon || "01d");
-      $("#currIcon").alt = w.description || "";
-      $("#currTemp").textContent = `${fmt(cur.main.temp,0)}${unitLabel()}`;
-      $("#currDesc").textContent = (w.description || "—").replace(/\b\w/g,m=>m.toUpperCase());
+      document.getElementById('currIcon').src = iconUrl(w.icon || "01d");
+      document.getElementById('currIcon').alt = w.description || "";
+      document.getElementById('currTemp').textContent = `${fmt(cur.main.temp,0)}${unitLabel()}`;
+      document.getElementById('currDesc').textContent = (w.description || "—").replace(/\b\w/g,m=>m.toUpperCase());
 
       const daily = buildDailyFromForecast(fc.list, tz);
       const today = daily[0];
-      if(today) $("#hl").textContent = `${fmt(today.temp.max,0)} / ${fmt(today.temp.min,0)}${unitLabel()}`;
-      $("#feels").textContent = `${fmt(cur.main.feels_like,0)}${unitLabel()}`;
-      $("#wind").textContent = windLabel(cur.wind.speed);
-      $("#humidity").textContent = `${cur.main.humidity}%`;
+      if(today) document.getElementById('hl').textContent = `${fmt(today.temp.max,0)} / ${fmt(today.temp.min,0)}${unitLabel()}`;
+      document.getElementById('feels').textContent = `${fmt(cur.main.feels_like,0)}${unitLabel()}`;
+      document.getElementById('wind').textContent = windLabel(cur.wind.speed);
+      document.getElementById('humidity').textContent = `${cur.main.humidity}%`;
 
-      $("#sunrise").textContent = timeStr(cur.sys.sunrise, tz);
-      $("#sunset").textContent  = timeStr(cur.sys.sunset, tz);
-      $("#pressure").textContent = `${cur.main.pressure} hPa`;
-      $("#visibility").textContent = visLabel(cur.visibility ?? 0);
-      $("#clouds").textContent = `${cur.clouds?.all ?? 0}%`;
-      $("#uv").textContent = "—"; // UV not on free endpoints
-      $("#aqi").textContent = aqi ? `${aqi} • ${aqiText(aqi)}` : "—";
+      document.getElementById('sunrise').textContent = timeStr(cur.sys.sunrise, tz);
+      document.getElementById('sunset').textContent  = timeStr(cur.sys.sunset,  tz);
+      document.getElementById('pressure').textContent = `${cur.main.pressure} hPa`;
+      document.getElementById('visibility').textContent = visLabel(cur.visibility ?? 0);
+      document.getElementById('clouds').textContent = `${cur.clouds?.all ?? 0}%`;
+      document.getElementById('uv').textContent = "—"; // UV not on free endpoints
+      document.getElementById('aqi').textContent = aqi ? `${aqi} • ${aqiText(aqi)}` : "—";
 
-      // Hourly ≈ next 24h (8 x 3-hour slots)
-      const hWrap = $("#hourlyTrack"); hWrap.innerHTML = "";
+      const hWrap = document.getElementById('hourlyTrack'); hWrap.innerHTML = "";
       fc.list.slice(0,8).forEach(h=>{
         const el = document.createElement("div");
         el.className = "w-24 shrink-0 text-center";
@@ -241,8 +232,7 @@
         hWrap.appendChild(el);
       });
 
-      // Daily (5 days)
-      const dWrap = $("#daily"); dWrap.innerHTML = "";
+      const dWrap = document.getElementById('daily'); dWrap.innerHTML = "";
       daily.forEach((d,i)=>{
         const row = document.createElement("div");
         row.className = "flex items-center justify-between gap-4 p-3";
@@ -262,41 +252,41 @@
 
     // ====== SEARCH / UI ======
     let suggestTimer=null;
-    $("#searchInput").addEventListener("input",(e)=>{
-      const q=e.target.value.trim(), box=$("#suggestions");
+    document.getElementById('searchInput').addEventListener('input',(e)=>{
+      const q=e.target.value.trim(), box=document.getElementById('suggestions');
       clearTimeout(suggestTimer);
-      if(!q){ box.classList.add("hidden"); box.innerHTML=""; return; }
+      if(!q){ box.classList.add('hidden'); box.innerHTML=""; return; }
       suggestTimer=setTimeout(async()=>{
         try{
           const res=await geocodeQuery(q);
-          if(!res.length){ box.classList.add("hidden"); box.innerHTML=""; return; }
+          if(!res.length){ box.classList.add('hidden'); box.innerHTML=""; return; }
           box.innerHTML=res.map((r,i)=>`
             <button data-i="${i}" class="w-full text-left px-3 py-2 rounded-lg hover:bg-white/80">
               <div class="font-medium">${r.name}${r.state?`, ${r.state}`:''}</div>
               <div class="text-xs text-slate-500">${r.country||''} • ${r.lat.toFixed(2)}, ${r.lon.toFixed(2)}</div>
             </button>`).join("");
-          box.classList.remove("hidden");
-          box.querySelectorAll("button").forEach(btn=>btn.addEventListener("click", async(ev)=>{
+          box.classList.remove('hidden');
+          box.querySelectorAll('button').forEach(btn=>btn.addEventListener('click', async(ev)=>{
             const r=res[Number(ev.currentTarget.dataset.i)];
-            box.classList.add("hidden");
-            $("#searchInput").value = `${r.name}${r.state?`, ${r.state}`:''}`;
+            box.classList.add('hidden');
+            document.getElementById('searchInput').value = `${r.name}${r.state?`, ${r.state}`:''}`;
             await loadPlace({ name:r.name, admin1:r.state||'', country:r.country||'', lat:r.lat, lon:r.lon });
           }));
         }catch{}
       },250);
     });
 
-    $("#searchForm").addEventListener("submit", async(e)=>{
+    document.getElementById('searchForm').addEventListener('submit', async(e)=>{
       e.preventDefault();
-      const q=$("#searchInput").value.trim(); if(!q) return;
+      const q=document.getElementById('searchInput').value.trim(); if(!q) return;
       try{
         const res=await geocodeQuery(q); const r=res?.[0];
-        if(!r) return toast("No results");
+        if(!r) return toast('No results');
         await loadPlace({ name:r.name, admin1:r.state||'', country:r.country||'', lat:r.lat, lon:r.lon });
-      }catch{ toast("Search failed"); }
+      }catch{ toast('Search failed'); }
     });
 
-    $("#homeBtn").addEventListener("click", async()=>{
+    document.getElementById('homeBtn').addEventListener('click', async()=>{
       if(state.homeCoords){
         const rg = await reverseGeocode(state.homeCoords.lat, state.homeCoords.lon) || {};
         await loadPlace({ name:rg.name||"Current Location", admin1:rg.state||'', country:rg.country||'', lat:state.homeCoords.lat, lon:state.homeCoords.lon });
@@ -305,9 +295,9 @@
       }
     });
 
-    $("#unitToggle").addEventListener("click", async()=>{
+    document.getElementById('unitToggle').addEventListener('click', async()=>{
       state.units = state.units==="metric" ? "imperial" : "metric";
-      $("#unitToggle").innerHTML = `<span class="font-semibold">${state.units==="metric"?"°C":"°F"}</span>`;
+      document.getElementById('unitToggle').innerHTML = `<span class="font-semibold">${state.units==="metric"?"°C":"°F"}</span>`;
       if(state.place) await loadPlace(state.place); // refetch with new units
     });
 
@@ -344,8 +334,6 @@
     (async function boot(){ await initByGeolocation(); })();
   </script>
 
-  <footer class="px-4 pb-8 text-center text-xs text-slate-600/80">
-    Data by OpenWeather (free endpoints). Consider restricting your API key by domain in your OpenWeather account.
-  </footer>
+  <footer class="px-4 pb-8 text-center text-xs text-slate-600/80">Data by OpenWeather (free endpoints). Consider restricting your API key by domain in your OpenWeather account.</footer>
 </body>
 </html>
